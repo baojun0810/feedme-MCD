@@ -64,7 +64,7 @@ function App() {
     const removeBot = bots[bots.length - 1];
     setBots(bots.slice(0, -1));
 
-    //here is to clear the timeout to terminate the setTimeout and also reset the order status
+    //here is to clear the timeout to terminate the setTimeout (cancel processing order by this bot) and also reset the order status
     if(removeBot.status === 'BUSY') {
       clearTimeout(removeBot.timeout)
       setOrders(prev => prev.map(data => data.id === removeBot.processId ? {...data, status: "PENDING"} : data))
@@ -73,47 +73,36 @@ function App() {
 
   useEffect(() => {
 
-    const process = (id: number) => {
-
-      //get the order
-      const order = orders.find(data => data.status === "PENDING");
-  
-      if(!order) {
-        console.log("no order")
-        return;
-      }
+    const process = (botId: number, orderId: number) => {
   
       //simulate order scenario
       const timeout = setTimeout(() => {
+        //callback
         setBots(prev =>
           prev.map(data =>
-            data.id === id ? { ...data, status: "IDLE" } : data
+            data.id === botId ? { ...data, status: "IDLE" } : data
           )
         );
-        setOrders(prev => prev.map(data => data.id === order.id ? {...data, status: "COMPLETED"} : data))
+        setOrders(prev => prev.map(data => data.id === orderId ? {...data, status: "COMPLETED"} : data))
       }, 10000)
       
       setBots(prev =>
         prev.map(data =>
-          data.id === id ? { ...data, status: "BUSY", processId: order.id, timeout: timeout } : data
+          data.id === botId ? { ...data, status: "BUSY", processId: orderId, timeout: timeout } : data
         )
       );
   
-      setOrders(prev => prev.map(data => data.id === order.id ? {...data, status: "PROCESSING"} : data));
+      setOrders(prev => prev.map(data => data.id === orderId ? {...data, status: "PROCESSING"} : data));
     }
 
-    //if dont have pending order and idle bot, then return
-    if(bots.filter(data => data.status === "IDLE").length === 0 || orders.filter(data => data.status === "PENDING").length === 0)
-      return;
-
+    const pendingOrder = orders.find(data => data.status === "PENDING");
     const availableBot = bots.find(data => data.status === "IDLE");
 
-    if(!availableBot) {
-      console.log("no bot")
+    //if dont have pending order and idle bot, then return
+    if(!pendingOrder || !availableBot)
       return;
-    }
 
-    process(availableBot.id)
+    process(availableBot.id, pendingOrder.id)
 
   }, [bots, orders])
 
